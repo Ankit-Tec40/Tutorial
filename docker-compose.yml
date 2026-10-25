@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: ai_engineering_lab
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_SECRET_KEY=replace-with-a-random-secret
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:///instance/ai_engineering_lab.db
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-2.5-flash
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2
+    volumes:
+      - ./instance:/app/instance
+      - ./uploads:/app/uploads
+      - ./sandbox_fs:/app/sandbox_fs
+      - ./vector_store:/app/vector_store
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

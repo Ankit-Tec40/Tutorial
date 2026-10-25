@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Agentic AI Workbench - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Agentic AI Workbench</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 fw-bold mb-1">Autonomous AI Agent Workbench</h1>
+      <p class="text-muted mb-0">Run multi-step ReAct agents, observe live reasoning traces, and govern sensitive tools with human-in-the-loop approvals.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Agent Goal & Execution Controls -->
+    <div class="col-lg-5">
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-robot text-danger"></i>
+          <span>Agent Mission Control</span>
+        </h5>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Agent High-Level Goal</label>
+          <textarea class="form-control" id="agentGoalInput" rows="3" placeholder="Enter an autonomous objective for the agent...">Find the current UTC time, calculate 365 * 24 to find the hours in a year, and summarize the result.</textarea>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted">Provider</label>
+            <select class="form-select form-select-sm" id="agentProviderSelect">
+              <option value="gemini" {% if active_provider_name == 'gemini' %}selected{% endif %}>Gemini 2.5</option>
+              <option value="ollama" {% if active_provider_name == 'ollama' %}selected{% endif %}>Ollama Local</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted">Max Iterations</label>
+            <input type="number" class="form-control form-control-sm" id="agentMaxIters" value="5" min="1" max="10">
+          </div>
+        </div>
+
+        <!-- Sample Presets -->
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Quick Mission Presets</label>
+          <div class="d-flex flex-wrap gap-1">
+            <button class="btn btn-sm btn-outline-secondary preset-btn" data-goal="Find the current UTC time, calculate 365 * 24, and provide a brief report.">Time & Math</button>
+            <button class="btn btn-sm btn-outline-secondary preset-btn" data-goal="Search documents for 'RAG' concepts and calculate 1024 * 4.">Knowledge & Math</button>
+            <button class="btn btn-sm btn-outline-danger preset-btn" data-goal="Write a summary file named 'agent_summary.txt' containing current project status.">Sensitive File Write</button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 py-2" id="startAgentBtn">
+          <i class="bi bi-play-circle-fill fs-5" id="agentRunIcon"></i>
+          <span id="agentRunText">Launch Agent Mission</span>
+        </button>
+      </div>
+
+      <!-- Available Tools Checklist -->
+      <div class="card-custom p-4">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-check2-square text-success"></i>
+          <span>Authorized Tools in Registry</span>
+        </h6>
+        <div class="list-group list-group-flush small">
+          {% for t in tools %}
+          <div class="list-group-item bg-transparent px-0 py-2 border-secondary-subtle d-flex justify-content-between align-items-center">
+            <span class="font-monospace fw-semibold">{{ t.name }}</span>
+            {% if t.is_sensitive %}
+            <span class="badge bg-danger-subtle text-danger" title="Requires Human Approval">Approval Gate</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-muted">Safe</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Execution Trace Timeline -->
+    <div class="col-lg-7">
+      <div class="card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-bezier2 text-primary"></i>
+            <span>Live Step-by-Step Execution Trace</span>
+          </h5>
+          <span class="badge bg-secondary-subtle text-muted" id="agentStatusBadge">Status: Idle</span>
+        </div>
+
+        <!-- Trace Container -->
+        <div id="agentTraceTimeline" class="p-2" style="min-height: 280px; max-height: 520px; overflow-y: auto;">
+          <div class="text-muted text-center py-5">
+            <i class="bi bi-cpu fs-1 d-block mb-2 text-muted"></i>
+            <span>Launch an agent mission to observe live Thought, Action, and Observation cycles.</span>
+          </div>
+        </div>
+
+        <!-- Final Answer Box -->
+        <div class="mt-3 p-3 rounded-3 border border-success border-opacity-50 bg-success bg-opacity-10 d-none" id="finalAnswerBox">
+          <h6 class="fw-bold text-success small text-uppercase mb-1"><i class="bi bi-check-circle-fill me-1"></i> Final Synthesized Answer</h6>
+          <div class="lh-base" id="finalAnswerContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Human-in-the-Loop Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content card-custom border-danger">
+      <div class="modal-header border-bottom border-danger-subtle bg-danger bg-opacity-10">
+        <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2">
+          <i class="bi bi-shield-exclamation"></i>
+          <span>Human-in-the-Loop Approval Required</span>
+        </h5>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-3">The autonomous agent is requesting permission to execute a <strong>sensitive action</strong>:</p>
+        <div class="p-3 rounded bg-code border border-secondary-subtle mb-3">
+          <div class="text-muted small fw-bold mb-1">Action: <span class="text-warning font-monospace" id="pendingActionName"></span></div>
+          <div class="text-muted small fw-bold mb-1">Payload:</div>
+          <pre class="mb-0 text-info font-monospace small" id="pendingActionPayload"></pre>
+        </div>
+        <p class="small text-muted mb-0">Do you approve the execution of this action within the sandbox?</p>
+      </div>
+      <div class="modal-footer border-top border-secondary-subtle">
+        <button type="button" class="btn btn-outline-secondary" id="rejectActionBtn" data-bs-dismiss="modal">Reject Action</button>
+        <button type="button" class="btn btn-danger px-4" id="approveActionBtn">Approve & Proceed</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const goalInput = document.getElementById("agentGoalInput");
+  const startBtn = document.getElementById("startAgentBtn");
+  const timeline = document.getElementById("agentTraceTimeline");
+  const statusBadge = document.getElementById("agentStatusBadge");
+  const finalAnswerBox = document.getElementById("finalAnswerBox");
+  const finalAnswerText = document.getElementById("finalAnswerContent");
+
+  const approvalModalEl = document.getElementById("approvalModal");
+  let pendingActionData = null;
+
+  // Preset Buttons
+  document.querySelectorAll(".preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      goalInput.value = btn.getAttribute("data-goal");
+    });
+  });
+
+  // Launch Agent
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      runAgentLoop(false, null);
+    });
+  }
+
+  function runAgentLoop(humanApproved = false, approvedAction = null) {
+    const goal = goalInput.value.trim();
+    if (!goal) return;
+
+    startBtn.disabled = true;
+    document.getElementById("agentRunIcon").className = "spinner-border spinner-border-sm";
+    document.getElementById("agentRunText").innerText = "Agent Thinking & Acting...";
+    statusBadge.className = "badge bg-warning text-dark";
+    statusBadge.innerText = "Status: Running Loop";
+    finalAnswerBox.classList.add("d-none");
+
+    fetch("/api/agents/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        goal: goal,
+        provider: document.getElementById("agentProviderSelect").value,
+        max_iterations: parseInt(document.getElementById("agentMaxIters").value),
+        human_approval_granted: humanApproved,
+        approved_action: approvedAction
+      })
+    })
+      .then(r => r.json())
+      .then(res => {
+        startBtn.disabled = false;
+        document.getElementById("agentRunIcon").className = "bi bi-play-circle-fill fs-5";
+        document.getElementById("agentRunText").innerText = "Launch Agent Mission";
+
+        // Render Trace Timeline
+        renderTrace(res.trace || []);
+
+        if (res.status === "awaiting_approval") {
+          statusBadge.className = "badge bg-danger";
+          statusBadge.innerText = "Status: Paused for Approval";
+          pendingActionData = res.pending_approval;
+          
+          document.getElementById("pendingActionName").innerText = pendingActionData.action;
+          document.getElementById("pendingActionPayload").innerText = JSON.stringify(pendingActionData.action_input, null, 2);
+
+          const modal = bootstrap.Modal.getOrCreateInstance(approvalModalEl);
+          modal.show();
+
+        } else if (res.status === "completed") {
+          statusBadge.className = "badge bg-success";
+          statusBadge.innerText = `Status: Completed (${res.latency_ms} ms)`;
+          if (res.final_answer) {
+            finalAnswerBox.classList.remove("d-none");
+            finalAnswerText.innerText = res.final_answer;
+          }
+          showToast("Agent successfully completed its mission!", "success");
+        } else {
+          statusBadge.className = "badge bg-secondary";
+          statusBadge.innerText = `Status: ${res.status}`;
+          if (res.final_answer) {
+            finalAnswerBox.classList.remove("d-none");
+            finalAnswerText.innerText = res.final_answer;
+          }
+        }
+      })
+      .catch(err => {
+        startBtn.disabled = false;
+        document.getElementById("agentRunIcon").className = "bi bi-play-circle-fill fs-5";
+        document.getElementById("agentRunText").innerText = "Launch Agent Mission";
+        statusBadge.className = "badge bg-danger";
+        statusBadge.innerText = "Status: Error";
+        showToast("Agent run failed: " + err.message, "danger");
+      });
+  }
+
+  // Approval Handlers
+  document.getElementById("approveActionBtn").addEventListener("click", () => {
+    const modal = bootstrap.Modal.getInstance(approvalModalEl);
+    if (modal) modal.hide();
+    showToast("Action approved! Resuming agent execution...", "info");
+    runAgentLoop(true, pendingActionData);
+  });
+
+  document.getElementById("rejectActionBtn").addEventListener("click", () => {
+    showToast("Action rejected by human operator.", "warning");
+    statusBadge.className = "badge bg-secondary";
+    statusBadge.innerText = "Status: Rejected by Human";
+  });
+
+  function renderTrace(trace) {
+    if (!trace.length) return;
+    let html = "";
+    trace.forEach(step => {
+      html += `
+        <div class="trace-step">
+          <div class="trace-circle">${step.step_number}</div>
+          <div class="p-3 rounded-3 border border-secondary-subtle bg-secondary-subtle bg-opacity-10 mb-2">
+            <div class="small text-muted mb-1"><strong class="text-primary">Thought:</strong> ${escapeHtml(step.thought)}</div>
+            <div class="small text-muted mb-1 font-monospace">
+              <strong class="text-warning">Action:</strong> ${escapeHtml(step.action || 'None')} 
+              <span class="text-secondary">${JSON.stringify(step.action_input || {})}</span>
+            </div>
+            <div class="p-2 rounded bg-code text-info font-monospace small mt-2">
+              <strong class="text-light">Observation:</strong> ${escapeHtml(typeof step.observation === 'object' ? JSON.stringify(step.observation) : String(step.observation))}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    timeline.innerHTML = html;
+  }
+});
+</script>
+{% endblock %}

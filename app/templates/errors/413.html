@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}File Too Large (413) - AI Engineering Lab{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+  <div class="card-custom p-5 mx-auto" style="max-width: 500px;">
+    <div class="display-1 fw-bold text-warning mb-3">413</div>
+    <h3 class="fw-bold mb-2">Payload Exceeds Limit</h3>
+    <p class="text-muted mb-4">The uploaded file exceeds the 16MB maximum payload threshold. Please select a smaller document for RAG indexing.</p>
+    <a href="{{ url_for('rag.rag_dashboard') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+      <i class="bi bi-arrow-left"></i> Return to Document RAG Lab
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lesson.title }} - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('lessons.catalog') }}" class="text-decoration-none text-muted">Curriculum</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('lessons.catalog') }}" class="text-decoration-none text-muted">{{ module.title }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ lesson.title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 1100px;">
+  <!-- Lesson Header Banner -->
+  <div class="card-custom p-4 p-md-5 mb-4 position-relative overflow-hidden" 
+       style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <span class="badge bg-primary text-white rounded-pill px-3 py-1 font-monospace">
+        {{ module.title }} &bull; Lesson {{ lesson.order }}
+      </span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small"><i class="bi bi-clock me-1"></i>~{{ lesson.estimated_minutes }} mins</span>
+        <!-- Mark Complete Toggle -->
+        <button class="btn btn-sm {% if is_completed %}btn-success{% else %}btn-outline-success{% endif %} d-inline-flex align-items-center gap-1" 
+                id="markCompleteBtn" data-lesson-id="{{ lesson.id }}">
+          <i class="bi {% if is_completed %}bi-check-circle-fill{% else %}bi-check-circle{% endif %}" id="markCompleteIcon"></i>
+          <span id="markCompleteText">{% if is_completed %}Completed{% else %}Mark Complete{% endif %}</span>
+        </button>
+      </div>
+    </div>
+
+    <h1 class="display-6 fw-bold mb-2">{{ lesson.title }}</h1>
+    <p class="lead text-muted mb-0">{{ lesson.summary }}</p>
+  </div>
+
+  <!-- SECTION 1: Learning Objectives & SECTION 2: Prerequisites -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-7">
+      <div class="card-custom p-4 h-100">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-primary">
+          <i class="bi bi-bullseye"></i>
+          <span>1. Learning Objectives</span>
+        </h5>
+        <ul class="list-unstyled mb-0">
+          {% for obj in lesson.objectives %}
+          <li class="d-flex align-items-start gap-2 mb-2">
+            <i class="bi bi-check2-circle text-primary mt-1"></i>
+            <span>{{ obj }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card-custom p-4 h-100">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-info">
+          <i class="bi bi-bookmark-check"></i>
+          <span>2. Prerequisites</span>
+        </h5>
+        <ul class="list-unstyled mb-0">
+          {% for prereq in lesson.prerequisites %}
+          <li class="d-flex align-items-center gap-2 mb-2 text-muted">
+            <i class="bi bi-arrow-right-short text-info fs-5"></i>
+            <span>{{ prereq }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Detailed Explanation -->
+  <div class="card-custom p-4 p-md-5 mb-4">
+    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+      <i class="bi bi-book-half text-primary"></i>
+      <span>3. Concept Explanation</span>
+    </h4>
+    <div class="markdown-content text-muted lh-lg" style="font-size: 1.02rem;">
+      {{ lesson.explanation_markdown|safe }}
+    </div>
+  </div>
+
+  <!-- SECTION 4: Real-World Use Cases -->
+  {% if lesson.real_world_use_cases %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-warning">
+      <i class="bi bi-briefcase-fill"></i>
+      <span>4. Real-World Use Cases</span>
+    </h5>
+    <div class="row g-3">
+      {% for uc in lesson.real_world_use_cases %}
+      <div class="col-md-4">
+        <div class="p-3 rounded-3 border border-secondary-subtle h-100 bg-secondary-subtle bg-opacity-10">
+          <div class="fw-semibold mb-1 text-main"><i class="bi bi-lightbulb text-warning me-1"></i> Use Case {{ loop.index }}</div>
+          <p class="small text-muted mb-0">{{ uc }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 5: Architecture Diagram (Mermaid) -->
+  {% if lesson.mermaid_diagram %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-secondary">
+      <i class="bi bi-diagram-3"></i>
+      <span>5. Architecture Workflow Diagram</span>
+    </h5>
+    <div class="mermaid text-center py-3 bg-secondary-subtle bg-opacity-10 rounded-3 border border-secondary-subtle">
+{{ lesson.mermaid_diagram }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 6: Step-by-Step Walkthrough -->
+  {% if lesson.walkthrough_markdown %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-info">
+      <i class="bi bi-list-ol"></i>
+      <span>6. Step-by-Step Walkthrough</span>
+    </h5>
+    <div class="text-muted lh-lg">
+      {{ lesson.walkthrough_markdown|safe }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 7 & 8: Working Code & Code Explanation -->
+  <div class="card-custom mb-4 overflow-hidden">
+    <div class="card-header-custom">
+      <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
+        <i class="bi bi-code-slash text-success"></i>
+        <span>7. Working Code Implementation</span>
+      </h5>
+      <button class="btn btn-sm btn-outline-secondary copy-code-btn" data-target="lessonCodeBlock">
+        <i class="bi bi-clipboard"></i> Copy Code
+      </button>
+    </div>
+    <div class="code-container border-0 rounded-0">
+      <pre class="code-body"><code class="language-{{ lesson.code_language or 'python' }}" id="lessonCodeBlock">{{ lesson.code_example }}</code></pre>
+    </div>
+    {% if lesson.code_explanation_markdown %}
+    <div class="p-4 border-top border-secondary-subtle bg-secondary-subtle bg-opacity-10">
+      <h6 class="fw-bold text-muted small text-uppercase">8. Code Breakdown & Important Blocks</h6>
+      <div class="text-muted small mb-0">{{ lesson.code_explanation_markdown|safe }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- SECTION 9, 10, 11, 12: Interactive Code Playground & Output Comparison -->
+  <div class="card-custom mb-4 border-primary" style="box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);">
+    <div class="card-header-custom bg-primary bg-opacity-10">
+      <div class="d-flex align-items-center gap-2">
+        <span class="status-dot online"></span>
+        <h5 class="mb-0 fw-bold text-primary">Interactive Laboratory Playground</h5>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <select class="form-select form-select-sm" id="labProviderSelect" style="width: 140px;">
+          <option value="gemini" {% if active_provider_name == 'gemini' %}selected{% endif %}>Gemini 2.5</option>
+          <option value="ollama" {% if active_provider_name == 'ollama' %}selected{% endif %}>Ollama Local</option>
+        </select>
+      </div>
+    </div>
+    <div class="p-4">
+      <p class="small text-muted mb-3">
+        Modify the input parameters below and click <strong>Run Example</strong> to execute a genuine server-side routine.
+      </p>
+
+      <!-- 10. Editable Parameters -->
+      <div class="mb-3">
+        <label class="form-label small fw-bold text-uppercase text-muted">10. Editable Parameters (JSON)</label>
+        <textarea class="form-control font-monospace text-info bg-code" id="labParamsEditor" rows="4">{{ lesson.default_parameters|tojson(indent=2) }}</textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center gap-2 mb-4">
+        <!-- 9. Run Example Button -->
+        <button class="btn btn-primary d-inline-flex align-items-center gap-2 px-4" id="runLabBtn" data-lab-id="{{ lesson.lab_id or 'lab-module1' }}">
+          <i class="bi bi-play-fill fs-5" id="runLabIcon"></i>
+          <span id="runLabText">9. Run Example</span>
+        </button>
+        <button class="btn btn-outline-secondary" id="resetLabParamsBtn">Reset Parameters</button>
+        <span class="small text-muted ms-auto" id="labExecutionTimer"></span>
+      </div>
+
+      <!-- 11 & 12. Output Comparison Tabs -->
+      <div class="border border-secondary-subtle rounded-3 overflow-hidden">
+        <ul class="nav nav-tabs bg-secondary-subtle bg-opacity-20 px-3 pt-2" id="outputTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="actual-tab" data-bs-toggle="tab" data-bs-target="#actualTabPane" type="button" role="tab">
+              <i class="bi bi-terminal me-1 text-primary"></i> 12. Actual Execution Output
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="expected-tab" data-bs-toggle="tab" data-bs-target="#expectedTabPane" type="button" role="tab">
+              <i class="bi bi-eye me-1 text-muted"></i> 11. Expected Output
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content" id="outputTabContent">
+          <!-- Actual Output Pane -->
+          <div class="tab-pane fade show active p-3" id="actualTabPane" role="tabpanel">
+            <div class="output-console" id="actualOutputConsole">Click 'Run Example' above to execute this lab...</div>
+          </div>
+          <!-- Expected Output Pane -->
+          <div class="tab-pane fade p-3" id="expectedTabPane" role="tabpanel">
+            <div class="output-console text-secondary" id="expectedOutputConsole">{{ lesson.expected_output or 'Expected output will be displayed here.' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 13: Common Errors & Debugging Guidance -->
+  {% if lesson.common_errors_markdown %}
+  <div class="card-custom p-4 mb-4 border-warning border-opacity-50">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-warning">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>13. Common Errors & Debugging Guidance</span>
+    </h5>
+    <div class="text-muted small lh-lg">
+      {{ lesson.common_errors_markdown|safe }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 14, 16, 17: Hands-on Exercise, Challenge & Hints -->
+  <div class="card-custom p-4 p-md-5 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-success">
+      <i class="bi bi-pencil-square"></i>
+      <span>14. Hands-On Exercise</span>
+    </h5>
+    <p class="text-muted">{{ lesson.exercise_prompt }}</p>
+
+    {% if lesson.exercise_starter_code %}
+    <div class="code-container mb-3">
+      <div class="code-header">
+        <span>Starter Code</span>
+        <button class="btn btn-sm py-0 text-muted copy-code-btn" data-target="starterCodeBlock">Copy</button>
+      </div>
+      <pre class="code-body"><code class="language-python" id="starterCodeBlock">{{ lesson.exercise_starter_code }}</code></pre>
+    </div>
+    {% endif %}
+
+    <!-- Hint & Solution Accordion -->
+    <div class="accordion mb-4" id="exerciseAccordion">
+      {% if lesson.exercise_hint %}
+      <div class="accordion-item bg-transparent border border-secondary-subtle rounded-3 mb-2">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed py-2 px-3 bg-transparent small fw-semibold text-info" type="button" data-bs-toggle="collapse" data-bs-target="#hintCollapse">
+            <i class="bi bi-lightbulb me-2"></i> Show Exercise Hint
+          </button>
+        </h2>
+        <div id="hintCollapse" class="accordion-collapse collapse" data-bs-parent="#exerciseAccordion">
+          <div class="accordion-body small text-muted p-3">
+            {{ lesson.exercise_hint }}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if lesson.exercise_solution %}
+      <div class="accordion-item bg-transparent border border-secondary-subtle rounded-3">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed py-2 px-3 bg-transparent small fw-semibold text-success" type="button" data-bs-toggle="collapse" data-bs-target="#solutionCollapse">
+            <i class="bi bi-check-circle me-2"></i> 17. Show Solution Code
+          </button>
+        </h2>
+        <div id="solutionCollapse" class="accordion-collapse collapse" data-bs-parent="#exerciseAccordion">
+          <div class="accordion-body p-3">
+            <pre class="code-body rounded-2"><code class="language-python">{{ lesson.exercise_solution }}</code></pre>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 16. Challenge Task -->
+    {% if lesson.challenge_task %}
+    <div class="p-3 rounded-3 border border-secondary-subtle bg-secondary-subtle bg-opacity-10">
+      <div class="fw-bold text-main small mb-1"><i class="bi bi-trophy text-warning me-1"></i> 16. Challenge Task</div>
+      <p class="small text-muted mb-0">{{ lesson.challenge_task }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- SECTION 15: Knowledge-Check Quiz -->
+  {% if quizzes %}
+  <div class="card-custom p-4 p-md-5 mb-4" id="quizSection">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0 d-flex align-items-center gap-2 text-primary">
+        <i class="bi bi-patch-question-fill"></i>
+        <span>15. Knowledge-Check Quiz</span>
+      </h5>
+      <span class="badge bg-secondary-subtle text-muted" id="quizScoreBadge">{{ quizzes|length }} Questions</span>
+    </div>
+    <p class="small text-muted mb-4">Answer the questions below to test your understanding. Passing with 70%+ automatically marks this lesson as completed.</p>
+
+    <form id="lessonQuizForm">
+      {% for q in quizzes %}
+      <div class="mb-4 p-3 rounded-3 border border-secondary-subtle quiz-question-block" id="question_block_{{ q.id }}">
+        <div class="fw-semibold mb-3">
+          <span class="badge bg-primary-subtle text-primary me-2">Q{{ loop.index }}</span>
+          {{ q.question_text }}
+        </div>
+        {% for opt in q.options %}
+        <label class="quiz-option-card" for="q_{{ q.id }}_opt_{{ loop.index0 }}" id="label_q_{{ q.id }}_{{ loop.index0 }}">
+          <input class="form-check-input" type="radio" name="quiz_{{ q.id }}" id="q_{{ q.id }}_opt_{{ loop.index0 }}" value="{{ loop.index0 }}">
+          <span class="small">{{ opt }}</span>
+        </label>
+        {% endfor %}
+        <!-- Explanation Placeholder -->
+        <div class="alert alert-secondary p-2 small mt-2 d-none explanation-box" id="explanation_{{ q.id }}"></div>
+      </div>
+      {% endfor %}
+
+      <div class="d-flex align-items-center gap-3">
+        <button type="button" class="btn btn-primary px-4" id="submitQuizBtn">Submit Quiz Answers</button>
+        <span class="small fw-bold" id="quizResultMsg"></span>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 18: Key Takeaways -->
+  {% if lesson.key_takeaways %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-info">
+      <i class="bi bi-star-fill text-warning"></i>
+      <span>18. Key Takeaways</span>
+    </h5>
+    <ul class="list-unstyled mb-0">
+      {% for t in lesson.key_takeaways %}
+      <li class="d-flex align-items-start gap-2 mb-2">
+        <i class="bi bi-chevron-right text-info mt-1"></i>
+        <span>{{ t }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 19: Navigation & Documentation Links -->
+  <div class="card-custom p-4 mb-5">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+      <i class="bi bi-link-45deg text-primary"></i>
+      <span>19. Documentation & Next Steps</span>
+    </h5>
+    
+    {% if lesson.doc_links %}
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      {% for link in lesson.doc_links %}
+      <a href="{{ link.url }}" target="_blank" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+        <i class="bi bi-box-arrow-up-right"></i> {{ link.title }}
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary-subtle">
+      {% if prev_lesson %}
+      <a href="{{ url_for('lessons.lesson_detail', slug=prev_lesson.slug) }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Previous: {{ prev_lesson.title|truncate(30) }}
+      </a>
+      {% else %}
+      <div></div>
+      {% endif %}
+
+      {% if next_lesson %}
+      <a href="{{ url_for('lessons.lesson_detail', slug=next_lesson.slug) }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+        Next: {{ next_lesson.title|truncate(30) }} <i class="bi bi-arrow-right"></i>
+      </a>
+      {% else %}
+      <a href="{{ url_for('projects.projects_gallery') }}" class="btn btn-success d-inline-flex align-items-center gap-2">
+        Go to Capstone Projects <i class="bi bi-trophy"></i>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/lesson.js') }}"></script>
+{% endblock %}

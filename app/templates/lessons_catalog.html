@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Curriculum Catalog - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Curriculum Catalog</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-1">AI Engineering Curriculum Catalog</h1>
+      <p class="text-muted mb-0">Master 15 comprehensive modules from foundational models to production agentic architectures.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-primary text-white rounded-pill px-3 py-2 font-monospace">
+        {{ completed_ids|length }} Completed
+      </span>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    {% for mod in modules %}
+    <div class="col-12">
+      <div class="card-custom">
+        <div class="card-header-custom bg-secondary-subtle bg-opacity-10">
+          <div class="d-flex align-items-center gap-3">
+            <div class="p-2 rounded bg-primary-subtle text-primary">
+              <i class="bi {{ mod.icon }} fs-4"></i>
+            </div>
+            <div>
+              <h5 class="mb-0 fw-bold">{{ mod.title }}</h5>
+              <small class="text-muted">{{ mod.description }}</small>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary-subtle text-muted">~{{ mod.estimated_hours }} hrs</span>
+            <span class="badge bg-primary-subtle text-primary">{{ mod.lessons|length }} Lesson(s)</span>
+          </div>
+        </div>
+
+        <div class="p-0">
+          <div class="list-group list-group-flush">
+            {% for l in mod.lessons %}
+            <div class="list-group-item bg-transparent p-3 border-secondary-subtle d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-secondary-subtle text-muted font-monospace" style="width: 40px;">{{ l.order }}</span>
+                <div>
+                  <a href="{{ url_for('lessons.lesson_detail', slug=l.slug) }}" class="fw-bold text-decoration-none text-main d-block">
+                    {{ l.title }}
+                  </a>
+                  <small class="text-muted">{{ l.summary }}</small>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ l.estimated_minutes }} mins</small>
+                {% if l.id in completed_ids %}
+                <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>
+                {% else %}
+                <span class="badge bg-secondary-subtle text-muted">Incomplete</span>
+                {% endif %}
+                <a href="{{ url_for('lessons.lesson_detail', slug=l.slug) }}" class="btn btn-sm btn-outline-primary px-3">
+                  Study Lesson <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

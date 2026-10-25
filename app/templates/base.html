@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="{{ current_theme or 'dark' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI Engineering Lab{% endblock %} - Full-Stack AI Platform</title>
+  
+  <!-- Google Fonts Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Prism.js Syntax Highlighting CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="app-wrapper">
+  <!-- Left Collapsible Sidebar -->
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-header">
+      <a href="{{ url_for('main.dashboard') }}" class="brand-title text-decoration-none">
+        <i class="bi bi-cpu-fill text-primary"></i>
+        <span>AI Engineering Lab</span>
+      </a>
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-monospace" style="font-size: 0.65rem;">v1.0</span>
+    </div>
+
+    <div class="sidebar-nav">
+      <!-- Main Navigation -->
+      <a href="{{ url_for('main.dashboard') }}" class="sidebar-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('lessons.catalog') }}" class="sidebar-link {% if request.endpoint == 'lessons.catalog' %}active{% endif %}">
+        <i class="bi bi-mortarboard-fill"></i>
+        <span>Curriculum Catalog</span>
+      </a>
+
+      <!-- Interactive Labs & Workbenches -->
+      <div class="nav-section-title">Interactive Labs</div>
+      <a href="{{ url_for('chat.workbench') }}" class="sidebar-link {% if request.endpoint == 'chat.workbench' %}active{% endif %}">
+        <i class="bi bi-chat-square-text-fill text-info"></i>
+        <span>AI Playground & Dual Chat</span>
+      </a>
+      <a href="{{ url_for('rag.rag_dashboard') }}" class="sidebar-link {% if request.endpoint == 'rag.rag_dashboard' %}active{% endif %}">
+        <i class="bi bi-database-fill-check text-success"></i>
+        <span>Document RAG Lab</span>
+      </a>
+      <a href="{{ url_for('tools.tools_lab') }}" class="sidebar-link {% if request.endpoint == 'tools.tools_lab' %}active{% endif %}">
+        <i class="bi bi-tools text-warning"></i>
+        <span>Tool & Function Calling</span>
+      </a>
+      <a href="{{ url_for('agents.agents_lab') }}" class="sidebar-link {% if request.endpoint == 'agents.agents_lab' %}active{% endif %}">
+        <i class="bi bi-robot text-danger"></i>
+        <span>Agentic AI Workbench</span>
+      </a>
+      <a href="{{ url_for('mcp.mcp_inspector') }}" class="sidebar-link {% if request.endpoint == 'mcp.mcp_inspector' %}active{% endif %}">
+        <i class="bi bi-plug-fill text-primary"></i>
+        <span>MCP Inspector</span>
+      </a>
+      <a href="{{ url_for('evaluations.eval_dashboard') }}" class="sidebar-link {% if request.endpoint == 'evaluations.eval_dashboard' %}active{% endif %}">
+        <i class="bi bi-shield-check text-secondary"></i>
+        <span>AI Evaluation Runner</span>
+      </a>
+
+      <!-- Portfolio Projects -->
+      <div class="nav-section-title">Portfolio Projects</div>
+      <a href="{{ url_for('projects.projects_gallery') }}" class="sidebar-link {% if 'projects.' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-trophy-fill text-warning"></i>
+        <span>Capstone Projects</span>
+      </a>
+
+      <!-- Course Curriculum Modules Tree -->
+      <div class="nav-section-title d-flex justify-content-between align-items-center">
+        <span>Curriculum Tree</span>
+        <small class="text-muted" style="font-size:0.68rem;">{{ completed_lesson_ids|length }} done</small>
+      </div>
+
+      <div class="accordion accordion-flush" id="curriculumAccordion">
+        {% for mod in nav_modules %}
+        <div class="accordion-item bg-transparent border-0">
+          <h2 class="accordion-header" id="headingMod{{ mod.id }}">
+            <button class="accordion-button collapsed bg-transparent py-2 px-2 text-muted shadow-none sidebar-link" 
+                    type="button" data-bs-toggle="collapse" data-bs-target="#collapseMod{{ mod.id }}" 
+                    style="font-size: 0.82rem;">
+              <i class="bi {{ mod.icon }} me-1"></i>
+              <span class="text-truncate">{{ mod.title }}</span>
+            </button>
+          </h2>
+          <div id="collapseMod{{ mod.id }}" class="accordion-collapse collapse" data-bs-parent="#curriculumAccordion">
+            <div class="accordion-body p-0 ps-3">
+              {% for l in mod.lessons %}
+              <a href="{{ url_for('lessons.lesson_detail', slug=l.slug) }}" 
+                 class="sidebar-link py-1 px-2 {% if request.path == '/lessons/' ~ l.slug %}active{% endif %}" 
+                 style="font-size: 0.8rem;">
+                <span class="text-truncate">{{ l.title }}</span>
+                {% if l.id in completed_lesson_ids %}
+                <i class="bi bi-check-circle-fill lesson-check-icon"></i>
+                {% endif %}
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Settings -->
+      <div class="nav-section-title">Configuration</div>
+      <a href="{{ url_for('settings.settings_page') }}" class="sidebar-link {% if request.endpoint == 'settings.settings_page' %}active{% endif %}">
+        <i class="bi bi-gear-fill"></i>
+        <span>Provider Settings</span>
+      </a>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-3 border-top border-secondary-subtle">
+      <div class="d-flex align-items-center justify-content-between">
+        <span class="small text-muted">Active: <strong>{{ active_provider_name|capitalize }}</strong></span>
+        <a href="{{ url_for('settings.settings_page') }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;">Switch</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="app-content">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center" id="sidebarToggleBtn" title="Toggle Sidebar">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+
+        <nav aria-label="breadcrumb" class="d-none d-md-block">
+          <ol class="breadcrumb mb-0" style="font-size: 0.85rem;">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}" class="text-decoration-none text-muted">Home</a></li>
+            {% block breadcrumbs %}{% endblock %}
+          </ol>
+        </nav>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <!-- Quick Search Button -->
+        <button class="search-trigger-btn" data-bs-toggle="modal" data-bs-target="#searchModal">
+          <i class="bi bi-search"></i>
+          <span class="d-none d-sm-inline">Quick Search...</span>
+          <span class="search-kbd d-none d-md-inline">Ctrl K</span>
+        </button>
+
+        <!-- Provider Status Indicators -->
+        {% if provider_status is defined %}
+        <div class="d-none d-lg-flex align-items-center gap-2 ms-2">
+          <!-- Gemini Pill -->
+          <a href="{{ url_for('settings.settings_page') }}" class="text-decoration-none">
+            <span class="provider-pill {% if provider_status.gemini.success %}online{% else %}offline{% endif %}" title="Gemini Status">
+              <span class="status-dot {% if provider_status.gemini.success %}online{% else %}offline{% endif %}"></span>
+              <span>Gemini</span>
+            </span>
+          </a>
+
+          <!-- Ollama Pill -->
+          <a href="{{ url_for('settings.settings_page') }}" class="text-decoration-none">
+            <span class="provider-pill {% if provider_status.ollama.success %}online{% else %}warning{% endif %}" title="Ollama Status">
+              <span class="status-dot {% if provider_status.ollama.success %}online{% else %}warning{% endif %}"></span>
+              <span>Ollama</span>
+            </span>
+          </a>
+        </div>
+        {% endif %}
+
+        <!-- Theme Toggle Button -->
+        <button class="btn btn-sm btn-outline-secondary ms-1" id="themeToggleBtn" title="Toggle Dark/Light Mode">
+          <i class="bi {% if current_theme == 'light' %}bi-sun-fill text-warning{% else %}bi-moon-stars-fill text-warning{% endif %}" id="themeIcon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <main class="p-3 p-md-4 flex-grow-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 px-4 border-top border-secondary-subtle text-muted d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size: 0.8rem;">
+      <div>
+        <span>&copy; AI Engineering Lab. Built with Flask, Gemini SDK, Ollama, & MCP.</span>
+      </div>
+      <div class="d-flex gap-3">
+        <a href="{{ url_for('settings.settings_page') }}" class="text-muted text-decoration-none">Settings</a>
+        <a href="https://github.com/google-gemini" target="_blank" class="text-muted text-decoration-none">Gemini SDK</a>
+        <a href="https://ollama.com" target="_blank" class="text-muted text-decoration-none">Ollama</a>
+        <a href="https://modelcontextprotocol.io" target="_blank" class="text-muted text-decoration-none">MCP</a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Global Quick Search Modal (Ctrl+K) -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-bottom border-secondary-subtle p-3">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control bg-transparent border-0 shadow-none fs-5" id="globalSearchInput" placeholder="Search curriculum, labs, topics, or projects..." autocomplete="off">
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-2" id="globalSearchResults" style="max-height: 400px; overflow-y: auto;">
+        <div class="text-muted p-3 text-center">Type a keyword to search lessons and projects...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" style="z-index: 1090;"></div>
+
+<!-- Core Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Tool Calling & Function Execution Lab - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Tool & Function Calling</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 fw-bold mb-1">AI Tool Calling & Function Execution Laboratory</h1>
+      <p class="text-muted mb-0">Inspect tool JSON schemas, execute safe server-side handlers, and observe the complete tool execution lifecycle.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Tool Registry & Schema Explorer -->
+    <div class="col-lg-5">
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-tools text-warning"></i>
+          <span>Registered Safe Tools</span>
+        </h5>
+        
+        <div class="list-group list-group-flush" id="toolsList">
+          {% for t in tools %}
+          <div class="list-group-item bg-transparent px-0 py-3 border-secondary-subtle">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="font-monospace fw-bold text-primary">{{ t.name }}</span>
+              {% if t.is_sensitive %}
+              <span class="badge bg-danger-subtle text-danger"><i class="bi bi-shield-lock me-1"></i> Requires Human Approval</span>
+              {% else %}
+              <span class="badge bg-success-subtle text-success">Safe Direct Execution</span>
+              {% endif %}
+            </div>
+            <p class="small text-muted mb-2">{{ t.description }}</p>
+            <button class="btn btn-sm btn-outline-secondary select-tool-btn" data-tool-name="{{ t.name }}" data-schema='{{ t.parameters|tojson }}'>
+              <i class="bi bi-play me-1"></i> Try Tool
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Invocation & Trace -->
+    <div class="col-lg-7">
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-terminal text-primary"></i>
+          <span>Tool Invocation Runner</span>
+        </h5>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Selected Tool</label>
+          <input type="text" class="form-control font-monospace" id="activeToolName" value="calculator" readonly>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Arguments (JSON Payload)</label>
+          <textarea class="form-control font-monospace text-info bg-code" id="toolArgumentsEditor" rows="4">{"expression": "250 * 4 + 75"}</textarea>
+        </div>
+
+        <button class="btn btn-primary d-flex align-items-center gap-2 px-4 mb-4" id="executeToolBtn">
+          <i class="bi bi-play-fill fs-5" id="toolExecIcon"></i>
+          <span id="toolExecText">Execute Safe Tool</span>
+        </button>
+
+        <!-- Tool Execution Trace -->
+        <h6 class="fw-bold small text-uppercase text-muted mb-2">Execution Flow & Observation</h6>
+        <div class="output-console p-3" id="toolExecutionConsole">
+Select a tool on the left and click 'Execute Safe Tool' to inspect the execution result...
+        </div>
+      </div>
+
+      <!-- JSON Schema Inspector -->
+      <div class="card-custom p-4">
+        <h5 class="fw-bold mb-2 d-flex align-items-center gap-2">
+          <i class="bi bi-braces text-info"></i>
+          <span>Tool JSON Schema</span>
+        </h5>
+        <div class="code-container">
+          <pre class="code-body"><code class="language-json" id="toolSchemaViewer"></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const activeToolInput = document.getElementById("activeToolName");
+  const argsEditor = document.getElementById("toolArgumentsEditor");
+  const execBtn = document.getElementById("executeToolBtn");
+  const consoleEl = document.getElementById("toolExecutionConsole");
+  const schemaViewer = document.getElementById("toolSchemaViewer");
+
+  // Default calculator sample args
+  const toolDefaults = {
+    "calculator": '{"expression": "250 * 4 + 75"}',
+    "current_time": '{"timezone": "UTC"}',
+    "simulated_weather": '{"location": "Tokyo"}',
+    "search_documents": '{"query": "AI Engineering", "max_results": 3}',
+    "list_sandbox_files": '{"subdir": ""}',
+    "write_sandbox_file": '{"filename": "test_output.txt", "content": "Hello from Safe Sandbox!"}'
+  };
+
+  // Tool Selection
+  document.querySelectorAll(".select-tool-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.getAttribute("data-tool-name");
+      const schema = btn.getAttribute("data-schema");
+      activeToolInput.value = name;
+      argsEditor.value = toolDefaults[name] || "{}";
+      schemaViewer.innerText = JSON.stringify(JSON.parse(schema), null, 2);
+      if (typeof Prism !== "undefined") Prism.highlightElement(schemaViewer);
+      showToast(`Selected tool '${name}'`, "info");
+    });
+  });
+
+  // Initial schema view
+  schemaViewer.innerText = JSON.stringify({
+    type: "object",
+    properties: { expression: { type: "string" } },
+    required: ["expression"]
+  }, null, 2);
+
+  // Execute Tool
+  if (execBtn) {
+    execBtn.addEventListener("click", () => {
+      const name = activeToolInput.value;
+      let args = {};
+      try {
+        args = JSON.parse(argsEditor.value.trim());
+      } catch (e) {
+        showToast("Invalid JSON arguments: " + e.message, "danger");
+        return;
+      }
+
+      execBtn.disabled = true;
+      document.getElementById("toolExecIcon").className = "spinner-border spinner-border-sm";
+      document.getElementById("toolExecText").innerText = "Executing...";
+
+      fetch("/api/tools/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_name: name, arguments: args })
+      })
+        .then(r => r.json())
+        .then(res => {
+          execBtn.disabled = false;
+          document.getElementById("toolExecIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("toolExecText").innerText = "Execute Safe Tool";
+
+          if (res.success) {
+            consoleEl.innerText = JSON.stringify(res, null, 2);
+            showToast("Tool executed successfully!", "success");
+          } else {
+            consoleEl.innerText = "Error:\n" + (res.error || JSON.stringify(res, null, 2));
+            showToast("Tool execution failed.", "warning");
+          }
+        })
+        .catch(err => {
+          execBtn.disabled = false;
+          document.getElementById("toolExecIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("toolExecText").innerText = "Execute Safe Tool";
+          consoleEl.innerText = "Network Error: " + err.message;
+        });
+    });
+  }
+});
+</script>
+{% endblock %}

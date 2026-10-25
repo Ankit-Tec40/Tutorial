@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}AI Evaluation & Benchmark Runner - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Evaluation Runner</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 fw-bold mb-1">AI Evaluation & Benchmark Runner</h1>
+      <p class="text-muted mb-0">Run automated golden test suites to benchmark output accuracy, required keyword retention, and inference latency.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Test Suite Config -->
+    <div class="col-lg-5">
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-primary">
+          <i class="bi bi-play-circle"></i>
+          <span>Configure Evaluation Run</span>
+        </h5>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Evaluation Suite Title</label>
+          <input type="text" class="form-control" id="evalTitleInput" value="Core Principles Regression Benchmark">
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted">Target Provider</label>
+            <select class="form-select form-select-sm" id="evalProviderSelect">
+              <option value="gemini" {% if active_provider_name == 'gemini' %}selected{% endif %}>Google Gemini</option>
+              <option value="ollama" {% if active_provider_name == 'ollama' %}selected{% endif %}>Ollama Local</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted">Model Override</label>
+            <input type="text" class="form-control form-control-sm font-monospace" id="evalModelInput" placeholder="Optional model name">
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 py-2 mb-4" id="runEvalSuiteBtn">
+          <i class="bi bi-play-fill fs-5" id="evalIcon"></i>
+          <span id="evalText">Run Automated Benchmark Suite</span>
+        </button>
+
+        <!-- Golden Test Cases -->
+        <h6 class="small fw-bold text-uppercase text-muted mb-2">Golden Test Cases ({{ default_test_cases|length }})</h6>
+        <div class="list-group list-group-flush small" style="max-height: 280px; overflow-y: auto;">
+          {% for tc in default_test_cases %}
+          <div class="list-group-item bg-transparent px-0 py-2 border-secondary-subtle">
+            <div class="fw-bold text-main">{{ loop.index }}. {{ tc.input }}</div>
+            <div class="text-muted small">Must contain: <span class="text-info font-monospace">{{ tc.expected_keywords|join(', ') }}</span></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Results Table & Metrics -->
+    <div class="col-lg-7">
+      <div class="card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-table text-success"></i>
+            <span>Benchmark Scorecard</span>
+          </h5>
+          <div class="d-flex gap-2" id="evalMetricsBadges">
+            <span class="badge bg-secondary-subtle text-muted" id="evalPassRate">Pass Rate: --%</span>
+            <span class="badge bg-secondary-subtle text-muted" id="evalAvgLatency">Avg Latency: -- ms</span>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-responsive" style="min-height: 260px;">
+          <table class="table table-hover align-middle small mb-0" id="evalResultsTable">
+            <thead class="text-muted">
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Test Input</th>
+                <th>Result</th>
+                <th>Latency</th>
+                <th>Keywords</th>
+              </tr>
+            </thead>
+            <tbody id="evalResultsBody">
+              <tr>
+                <td colspan="5" class="text-center text-muted py-5">Click 'Run Automated Benchmark Suite' to execute golden tests...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Past Evaluation Runs -->
+      {% if past_runs %}
+      <div class="card-custom p-4">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2 text-muted">
+          <i class="bi bi-clock-history"></i>
+          <span>Past Evaluation Runs</span>
+        </h6>
+        <div class="list-group list-group-flush small">
+          {% for r in past_runs %}
+          <div class="list-group-item bg-transparent px-0 py-2 border-secondary-subtle d-flex justify-content-between align-items-center">
+            <div>
+              <span class="fw-bold text-main">{{ r.title }}</span>
+              <span class="badge bg-secondary-subtle text-muted ms-2">{{ r.provider }}: {{ r.model }}</span>
+            </div>
+            <div>
+              <span class="badge bg-success-subtle text-success me-2">{{ r.metrics.get('pass_rate', 0) }}% Pass</span>
+              <span class="text-muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const runBtn = document.getElementById("runEvalSuiteBtn");
+  const tbody = document.getElementById("evalResultsBody");
+  const passRateBadge = document.getElementById("evalPassRate");
+  const avgLatencyBadge = document.getElementById("evalAvgLatency");
+
+  if (runBtn) {
+    runBtn.addEventListener("click", () => {
+      const title = document.getElementById("evalTitleInput").value.trim();
+      const provider = document.getElementById("evalProviderSelect").value;
+      const model = document.getElementById("evalModelInput").value.trim();
+
+      runBtn.disabled = true;
+      document.getElementById("evalIcon").className = "spinner-border spinner-border-sm";
+      document.getElementById("evalText").innerText = "Executing Suite...";
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-primary"><div class="spinner-border spinner-border-sm me-2"></div> Running golden test cases against AI provider...</td></tr>';
+
+      fetch("/api/evaluations/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, provider, model: model || undefined })
+      })
+        .then(r => r.json())
+        .then(res => {
+          runBtn.disabled = false;
+          document.getElementById("evalIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("evalText").innerText = "Run Automated Benchmark Suite";
+
+          passRateBadge.innerText = `Pass Rate: ${res.metrics.pass_rate}%`;
+          passRateBadge.className = res.metrics.pass_rate >= 80 ? "badge bg-success" : "badge bg-warning text-dark";
+
+          avgLatencyBadge.innerText = `Avg Latency: ${res.metrics.avg_latency_ms} ms`;
+          avgLatencyBadge.className = "badge bg-info text-dark";
+
+          let html = "";
+          res.results.forEach((r, idx) => {
+            html += `
+              <tr>
+                <td class="font-monospace">${idx + 1}</td>
+                <td>
+                  <div class="fw-bold">${escapeHtml(r.input)}</div>
+                  <small class="text-muted font-monospace" style="display:block; max-height: 60px; overflow:hidden; text-overflow:ellipsis;">"${escapeHtml(r.output)}"</small>
+                </td>
+                <td>
+                  <span class="badge ${r.passed ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">
+                    ${r.passed ? 'PASS' : 'FAIL'}
+                  </span>
+                </td>
+                <td class="font-monospace">${r.latency_ms} ms</td>
+                <td class="small">
+                  <span class="text-success">${r.matched_keywords ? r.matched_keywords.join(', ') : ''}</span>
+                  ${r.missing_keywords && r.missing_keywords.length ? `<br><span class="text-danger">Missing: ${r.missing_keywords.join(', ')}</span>` : ''}
+                </td>
+              </tr>
+            `;
+          });
+          tbody.innerHTML = html;
+          showToast(`Evaluation completed: ${res.metrics.pass_rate}% pass rate`, "success");
+        })
+        .catch(err => {
+          runBtn.disabled = false;
+          document.getElementById("evalIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("evalText").innerText = "Run Automated Benchmark Suite";
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Evaluation Error: ${err.message}</td></tr>`;
+        });
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}AI Playground & Chat Workbench - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">AI Playground</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 h-100 d-flex flex-column" style="min-height: calc(100vh - 160px);">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+    <div>
+      <h1 class="h4 fw-bold mb-0">Global AI Chat & Dual-Model Workbench</h1>
+      <small class="text-muted">Chat with Gemini, run local Ollama models, or benchmark side-by-side with streaming and latency metrics.</small>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <!-- Mode Toggle -->
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="chatMode" id="singleChatMode" checked>
+        <label class="btn btn-outline-secondary" for="singleChatMode"><i class="bi bi-chat-left-text me-1"></i> Single Chat</label>
+
+        <input type="radio" class="btn-check" name="chatMode" id="compareChatMode">
+        <label class="btn btn-outline-secondary" for="compareChatMode"><i class="bi bi-layout-split me-1"></i> Dual Comparison</label>
+      </div>
+
+      <button class="btn btn-sm btn-outline-secondary" id="exportChatBtn" title="Export conversation as JSON">
+        <i class="bi bi-download"></i> Export
+      </button>
+      <button class="btn btn-sm btn-outline-danger" id="clearChatBtn" title="Clear conversation">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3 flex-grow-1">
+    <!-- Configuration Sidebar (Collapsible) -->
+    <div class="col-lg-3">
+      <div class="card-custom p-3 h-100">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-sliders text-primary"></i>
+          <span>Model Parameters</span>
+        </h6>
+
+        <!-- Single Provider Settings -->
+        <div id="singleProviderControls">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Provider</label>
+            <select class="form-select form-select-sm" id="chatProviderSelect">
+              <option value="gemini" {% if active_provider_name == 'gemini' %}selected{% endif %}>Google Gemini</option>
+              <option value="ollama" {% if active_provider_name == 'ollama' %}selected{% endif %}>Ollama (Local)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Model Name</label>
+            <input type="text" class="form-control form-control-sm font-monospace" id="chatModelInput" placeholder="gemini-2.5-flash or llama3.2">
+          </div>
+        </div>
+
+        <!-- Compare Provider Controls -->
+        <div id="compareProviderControls" class="d-none">
+          <div class="p-2 mb-2 rounded bg-secondary-subtle bg-opacity-20 border border-secondary-subtle">
+            <label class="form-label small fw-bold text-primary mb-1">Model 1 (Cloud)</label>
+            <select class="form-select form-select-sm mb-1" id="compareP1">
+              <option value="gemini" selected>Google Gemini</option>
+            </select>
+            <input type="text" class="form-control form-control-sm font-monospace" id="compareM1" value="gemini-2.5-flash">
+          </div>
+          <div class="p-2 mb-3 rounded bg-secondary-subtle bg-opacity-20 border border-secondary-subtle">
+            <label class="form-label small fw-bold text-info mb-1">Model 2 (Local)</label>
+            <select class="form-select form-select-sm mb-1" id="compareP2">
+              <option value="ollama" selected>Ollama Local</option>
+            </select>
+            <input type="text" class="form-control form-control-sm font-monospace" id="compareM2" value="llama3.2">
+          </div>
+        </div>
+
+        <!-- System Prompt -->
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">System Instructions</label>
+          <textarea class="form-control form-control-sm" id="chatSystemPrompt" rows="3" placeholder="You are an expert AI engineering assistant."></textarea>
+        </div>
+
+        <!-- Temperature Slider -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <label class="form-label small fw-bold text-muted">Temperature</label>
+            <span class="small font-monospace" id="tempValue">0.7</span>
+          </div>
+          <input type="range" class="form-range" min="0.0" max="1.5" step="0.1" value="0.7" id="tempSlider">
+        </div>
+
+        <!-- Streaming Toggle -->
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="streamToggle" checked>
+          <label class="form-check-label small" for="streamToggle">Stream Responses (SSE)</label>
+        </div>
+
+        <!-- Metrics Display -->
+        <div class="p-2 rounded bg-secondary-subtle bg-opacity-20 small border border-secondary-subtle mt-auto">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">Latency:</span>
+            <span class="fw-bold font-monospace" id="metricLatency">-- ms</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Tokens:</span>
+            <span class="fw-bold font-monospace" id="metricTokens">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Display & Input Area -->
+    <div class="col-lg-9 d-flex flex-column">
+      <!-- Chat Messages Container -->
+      <div class="card-custom p-3 flex-grow-1 overflow-auto mb-3" id="chatMessagesBox" style="min-height: 400px; max-height: 580px;">
+        <!-- Single Mode Stream Container -->
+        <div id="singleMessagesList">
+          <div class="d-flex gap-3 mb-3">
+            <div class="p-2 rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+              <i class="bi bi-robot"></i>
+            </div>
+            <div class="p-3 rounded-3 card-custom bg-secondary-subtle bg-opacity-20" style="max-width: 80%;">
+              <p class="mb-0">Hello! I'm your AI Engineering Lab assistant. Select Gemini or Ollama to get started, or toggle Dual Comparison to benchmark both models simultaneously.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dual Comparison Container (Hidden by default) -->
+        <div id="compareMessagesList" class="d-none row g-3">
+          <div class="col-md-6">
+            <div class="p-2 rounded-top bg-primary-subtle text-primary fw-bold small d-flex justify-content-between">
+              <span>Model 1 (Gemini)</span>
+              <span id="p1Metrics" class="font-monospace"></span>
+            </div>
+            <div class="p-3 rounded-bottom border border-secondary-subtle bg-code text-main font-monospace small" id="p1Output" style="min-height: 250px; white-space: pre-wrap;">Awaiting run...</div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 rounded-top bg-info-subtle text-info fw-bold small d-flex justify-content-between">
+              <span>Model 2 (Ollama)</span>
+              <span id="p2Metrics" class="font-monospace"></span>
+            </div>
+            <div class="p-3 rounded-bottom border border-secondary-subtle bg-code text-main font-monospace small" id="p2Output" style="min-height: 250px; white-space: pre-wrap;">Awaiting run...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Form -->
+      <form id="chatForm" class="d-flex gap-2">
+        <textarea class="form-control" id="chatInputText" rows="2" placeholder="Type an AI engineering query (e.g. 'How does context window compression work in advanced RAG?')..." style="resize: none;"></textarea>
+        <button type="submit" class="btn btn-primary px-4 d-flex align-items-center justify-content-center" id="sendChatBtn">
+          <i class="bi bi-send-fill fs-5" id="sendIcon"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}

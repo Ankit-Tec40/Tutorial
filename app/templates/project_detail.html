@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.title }} - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('projects.projects_gallery') }}" class="text-decoration-none text-muted">Projects</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ project.title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Project Header -->
+  <div class="card-custom p-4 p-md-5 mb-4 position-relative overflow-hidden"
+       style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary text-white rounded-pill px-3 py-1 font-monospace">{{ project.badge }}</span>
+        <span class="badge bg-secondary-subtle text-muted">{{ project.difficulty }}</span>
+      </div>
+      <a href="{{ url_for('projects.export_project_zip', slug=project.slug) }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+        <i class="bi bi-download"></i> Download Clean Project ZIP
+      </a>
+    </div>
+
+    <h1 class="display-6 fw-bold mb-2">{{ project.title }}</h1>
+    <p class="lead text-muted mb-0">{{ project.description }}</p>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Specs, Objectives & Architecture -->
+    <div class="col-lg-5">
+      <!-- Objectives & Requirements -->
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-primary">
+          <i class="bi bi-bullseye"></i>
+          <span>Objectives & Requirements</span>
+        </h5>
+        
+        <h6 class="small fw-bold text-uppercase text-muted mb-2">Objectives</h6>
+        <ul class="list-unstyled ps-2 mb-3">
+          {% for o in project.objectives %}
+          <li class="d-flex align-items-start gap-2 mb-2 small text-muted">
+            <i class="bi bi-check2 text-primary mt-1"></i>
+            <span>{{ o }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <h6 class="small fw-bold text-uppercase text-muted mb-2">Requirements</h6>
+        <ul class="list-unstyled ps-2 mb-0">
+          {% for r in project.requirements %}
+          <li class="d-flex align-items-start gap-2 mb-2 small text-muted">
+            <i class="bi bi-arrow-right-short text-info fs-5"></i>
+            <span>{{ r }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Architecture Diagram -->
+      {% if project.architecture_mermaid %}
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-secondary">
+          <i class="bi bi-diagram-3"></i>
+          <span>Architecture Blueprint</span>
+        </h5>
+        <div class="mermaid text-center py-2 bg-secondary-subtle bg-opacity-10 rounded-3 border border-secondary-subtle">
+{{ project.architecture_mermaid }}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Run Instructions -->
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-success">
+          <i class="bi bi-terminal"></i>
+          <span>Run Instructions</span>
+        </h5>
+        <div class="small text-muted lh-base">
+          {{ project.run_instructions_markdown|safe }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Source Code Workspace Browser -->
+    <div class="col-lg-7">
+      <div class="card-custom overflow-hidden mb-4">
+        <div class="card-header-custom">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-folder-fill text-warning"></i>
+            <h5 class="mb-0 fw-bold">Project Source Files</h5>
+          </div>
+          <!-- File Switcher Tabs -->
+          <ul class="nav nav-pills" id="filePillsTab" role="tablist">
+            {% for f in files %}
+            <li class="nav-item" role="presentation">
+              <button class="nav-link py-1 px-3 small font-monospace {% if loop.first %}active{% endif %}" 
+                      id="pill-{{ f.id }}" data-bs-toggle="pill" data-bs-target="#tab-{{ f.id }}" type="button" role="tab">
+                {{ f.filename }}
+              </button>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="tab-content" id="filePillsTabContent">
+          {% for f in files %}
+          <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="tab-{{ f.id }}" role="tabpanel">
+            <div class="code-container rounded-0 border-0">
+              <div class="code-header d-flex justify-content-between">
+                <span>{{ f.filename }}</span>
+                <button class="btn btn-sm py-0 text-muted copy-code-btn" data-target="code-{{ f.id }}">Copy</button>
+              </div>
+              <pre class="code-body" style="max-height: 550px;"><code class="language-{{ f.language or 'python' }}" id="code-{{ f.id }}">{{ f.content }}</code></pre>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Extension Challenges -->
+      {% if project.extension_challenges %}
+      <div class="card-custom p-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-warning">
+          <i class="bi bi-star-fill text-warning"></i>
+          <span>Extension Challenges</span>
+        </h5>
+        <ul class="list-unstyled mb-0">
+          {% for ec in project.extension_challenges %}
+          <li class="d-flex align-items-start gap-2 mb-2 small text-muted">
+            <i class="bi bi-award text-warning mt-1"></i>
+            <span>{{ ec }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

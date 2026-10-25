@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Model Context Protocol (MCP) Inspector - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">MCP Inspector</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 fw-bold mb-1">Model Context Protocol (MCP) Visual Inspector</h1>
+      <p class="text-muted mb-0">Inspect JSON-RPC 2.0 capabilities, explore tool schemas, and execute MCP server operations.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-success-subtle text-success px-3 py-2 border border-success-subtle">
+        <span class="status-dot online me-1"></span> Server Connected
+      </span>
+      <span class="badge bg-secondary-subtle text-muted px-3 py-2 font-monospace">
+        Transport: stdio / in-process
+      </span>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Server Info & Tool List -->
+    <div class="col-lg-5">
+      <!-- Server Metadata Card -->
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-primary">
+          <i class="bi bi-hdd-network"></i>
+          <span>Connected MCP Server</span>
+        </h5>
+        <div class="small">
+          <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+            <span class="text-muted">Server Name:</span>
+            <span class="font-monospace fw-bold">{{ server_meta.name }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+            <span class="text-muted">Version:</span>
+            <span class="font-monospace">{{ server_meta.version }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+            <span class="text-muted">Transport:</span>
+            <span class="font-monospace text-info">{{ server_meta.transport }}</span>
+          </div>
+          <div class="py-2 text-muted">
+            {{ server_meta.description }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Discovered Tools List -->
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-warning">
+          <i class="bi bi-tools"></i>
+          <span>Discovered MCP Tools ({{ tools|length }})</span>
+        </h5>
+
+        <div class="list-group list-group-flush">
+          {% for t in tools %}
+          <div class="list-group-item bg-transparent px-0 py-3 border-secondary-subtle">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="font-monospace fw-bold text-primary">{{ t.name }}</span>
+              <button class="btn btn-sm btn-outline-primary py-0 px-2 select-mcp-btn" 
+                      data-name="{{ t.name }}" 
+                      data-schema='{{ t.input_schema|tojson }}'>
+                Inspect & Test
+              </button>
+            </div>
+            <p class="small text-muted mb-0">{{ t.description }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Exposed Resources -->
+      {% if resources %}
+      <div class="card-custom p-4">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2 text-info">
+          <i class="bi bi-file-earmark-text"></i>
+          <span>Exposed MCP Resources ({{ resources|length }})</span>
+        </h6>
+        <div class="list-group list-group-flush small">
+          {% for r in resources %}
+          <div class="list-group-item bg-transparent px-0 py-2 border-secondary-subtle">
+            <div class="font-monospace text-primary text-truncate">{{ r.uri }}</div>
+            <div class="text-muted small">{{ r.description }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Interactive Invocation & Schema -->
+    <div class="col-lg-7">
+      <div class="card-custom p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-play-circle text-primary"></i>
+          <span>Execute MCP Tool</span>
+        </h5>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Tool Name</label>
+          <input type="text" class="form-control font-monospace" id="mcpToolName" value="calculator" readonly>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Arguments Payload (JSON)</label>
+          <textarea class="form-control font-monospace text-info bg-code" id="mcpArgsInput" rows="4">{"expression": "1000 / 8"}</textarea>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <button class="btn btn-primary d-flex align-items-center gap-2 px-4" id="invokeMcpBtn">
+            <i class="bi bi-play-fill fs-5" id="mcpRunIcon"></i>
+            <span id="mcpRunText">Call MCP Tool via JSON-RPC</span>
+          </button>
+          <span class="small text-muted font-monospace" id="mcpDurationText"></span>
+        </div>
+
+        <!-- Result Console -->
+        <h6 class="fw-bold small text-uppercase text-muted mb-2">Tool Output & Observation</h6>
+        <div class="output-console p-3" id="mcpResultConsole">Select an MCP tool on the left and invoke it to observe the structured response...</div>
+      </div>
+
+      <!-- Schema Viewer -->
+      <div class="card-custom p-4">
+        <h5 class="fw-bold mb-2 d-flex align-items-center gap-2 text-info">
+          <i class="bi bi-code-square"></i>
+          <span>MCP Input Schema (JSON Schema)</span>
+        </h5>
+        <div class="code-container">
+          <pre class="code-body"><code class="language-json" id="mcpSchemaBlock"></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const nameInput = document.getElementById("mcpToolName");
+  const argsInput = document.getElementById("mcpArgsInput");
+  const invokeBtn = document.getElementById("invokeMcpBtn");
+  const resultConsole = document.getElementById("mcpResultConsole");
+  const schemaBlock = document.getElementById("mcpSchemaBlock");
+  const durationText = document.getElementById("mcpDurationText");
+
+  const sampleArgs = {
+    "calculator": '{"expression": "1000 / 8"}',
+    "notes_search": '{"keyword": "mcp"}',
+    "approved_dir_listing": '{"subpath": ""}'
+  };
+
+  // Inspect Tool
+  document.querySelectorAll(".select-mcp-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.getAttribute("data-name");
+      const schema = btn.getAttribute("data-schema");
+      nameInput.value = name;
+      argsInput.value = sampleArgs[name] || "{}";
+      schemaBlock.innerText = JSON.stringify(JSON.parse(schema), null, 2);
+      if (typeof Prism !== "undefined") Prism.highlightElement(schemaBlock);
+      showToast(`Inspecting MCP tool '${name}'`, "info");
+    });
+  });
+
+  // Default schema view
+  schemaBlock.innerText = JSON.stringify({
+    type: "object",
+    properties: { expression: { type: "string" } },
+    required: ["expression"]
+  }, null, 2);
+
+  // Invoke Tool
+  if (invokeBtn) {
+    invokeBtn.addEventListener("click", () => {
+      const name = nameInput.value;
+      let args = {};
+      try {
+        args = JSON.parse(argsInput.value.trim());
+      } catch (e) {
+        showToast("Invalid JSON in arguments payload: " + e.message, "danger");
+        return;
+      }
+
+      invokeBtn.disabled = true;
+      document.getElementById("mcpRunIcon").className = "spinner-border spinner-border-sm";
+      document.getElementById("mcpRunText").innerText = "Calling MCP Server...";
+      durationText.innerText = "";
+
+      fetch("/api/mcp/invoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_name: name, arguments: args })
+      })
+        .then(r => r.json())
+        .then(res => {
+          invokeBtn.disabled = false;
+          document.getElementById("mcpRunIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("mcpRunText").innerText = "Call MCP Tool via JSON-RPC";
+          durationText.innerText = `Duration: ${res.duration_ms} ms`;
+
+          if (res.success) {
+            resultConsole.innerText = res.result || "Execution completed with no return text.";
+            showToast("MCP Tool called successfully!", "success");
+          } else {
+            resultConsole.innerText = "MCP Invocation Error:\n" + (res.error || "Unknown error");
+            showToast("MCP Tool execution error.", "warning");
+          }
+        })
+        .catch(err => {
+          invokeBtn.disabled = false;
+          document.getElementById("mcpRunIcon").className = "bi bi-play-fill fs-5";
+          document.getElementById("mcpRunText").innerText = "Call MCP Tool via JSON-RPC";
+          resultConsole.innerText = "Network Error: " + err.message;
+        });
+    });
+  }
+});
+</script>
+{% endblock %}

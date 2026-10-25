@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Provider Settings & Configuration - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Provider Settings</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 1000px;">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 fw-bold mb-1">AI Provider Configuration & Settings</h1>
+      <p class="text-muted mb-0">Configure your Google Gemini API key, manage local Ollama models, and test network connectivity.</p>
+    </div>
+  </div>
+
+  <!-- Active Provider Selector Card -->
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-primary">
+      <i class="bi bi-toggles2"></i>
+      <span>Default Active AI Provider</span>
+    </h5>
+    
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="quiz-option-card d-flex align-items-center gap-3 p-3 {% if active_provider == 'gemini' %}border-primary bg-primary bg-opacity-10{% endif %}" for="prefProviderGemini">
+          <input class="form-check-input" type="radio" name="activeProviderPref" id="prefProviderGemini" value="gemini" {% if active_provider == 'gemini' %}checked{% endif %}>
+          <div>
+            <div class="fw-bold"><i class="bi bi-google text-primary me-1"></i> Google Gemini API</div>
+            <small class="text-muted">Cloud inference via official google-genai SDK. High speed, structured outputs, vision.</small>
+          </div>
+        </label>
+      </div>
+
+      <div class="col-md-6">
+        <label class="quiz-option-card d-flex align-items-center gap-3 p-3 {% if active_provider == 'ollama' %}border-info bg-info bg-opacity-10{% endif %}" for="prefProviderOllama">
+          <input class="form-check-input" type="radio" name="activeProviderPref" id="prefProviderOllama" value="ollama" {% if active_provider == 'ollama' %}checked{% endif %}>
+          <div>
+            <div class="fw-bold"><i class="bi bi-hdd-network text-info me-1"></i> Ollama Local LLMs</div>
+            <small class="text-muted">100% private offline inference on your own hardware. Zero API costs, no key needed.</small>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary px-4" id="saveProviderPrefBtn">Save Active Provider Preference</button>
+  </div>
+
+  <div class="row g-4">
+    <!-- Google Gemini Configuration -->
+    <div class="col-lg-6">
+      <div class="card-custom p-4 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-google text-primary"></i>
+            <span>Google Gemini API</span>
+          </h5>
+          {% if gemini_configured %}
+          <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle-fill me-1"></i> Key Configured</span>
+          {% else %}
+          <span class="badge bg-danger-subtle text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i> Key Missing</span>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Selected Gemini Model</label>
+          <select class="form-select form-select-sm" id="geminiModelSelect">
+            {% for m in gemini_models %}
+            <option value="{{ m }}" {% if gemini_model == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="p-3 rounded bg-secondary-subtle bg-opacity-20 border border-secondary-subtle small mb-3">
+          <div class="fw-bold mb-1"><i class="bi bi-key-fill text-warning me-1"></i> API Key Storage Guide:</div>
+          <p class="text-muted mb-2">
+            For security, API keys are <strong>never stored in the database or client-side storage</strong>. Set your key inside your workspace <code>.env</code> file:
+          </p>
+          <pre class="mb-0 bg-code p-2 rounded text-info font-monospace" style="font-size:0.8rem;">GEMINI_API_KEY=your_google_ai_studio_key</pre>
+          <p class="text-muted mt-2 mb-0">
+            Get a free key from <a href="https://aistudio.google.com/" target="_blank" class="text-primary">Google AI Studio</a>.
+          </p>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-auto">
+          <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2" id="testGeminiBtn">
+            <i class="bi bi-wifi" id="testGeminiIcon"></i>
+            <span id="testGeminiText">Test Gemini Connectivity</span>
+          </button>
+        </div>
+        <div class="small mt-2" id="geminiTestFeedback"></div>
+      </div>
+    </div>
+
+    <!-- Ollama Configuration -->
+    <div class="col-lg-6">
+      <div class="card-custom p-4 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-hdd-network text-info"></i>
+            <span>Ollama Local Server</span>
+          </h5>
+          {% if provider_status.ollama.success %}
+          <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle-fill me-1"></i> Online</span>
+          {% else %}
+          <span class="badge bg-warning-subtle text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i> Offline</span>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Ollama Base URL</label>
+          <input type="text" class="form-control form-control-sm font-monospace" id="ollamaUrlInput" value="{{ ollama_url }}" readonly>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Selected Local Model</label>
+          <select class="form-select form-select-sm" id="ollamaModelSelect">
+            {% for m in ollama_models %}
+            <option value="{{ m }}" {% if ollama_model == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="p-3 rounded bg-secondary-subtle bg-opacity-20 border border-secondary-subtle small mb-3">
+          <div class="fw-bold mb-1"><i class="bi bi-terminal-fill text-info me-1"></i> Ollama Setup Instructions:</div>
+          <ol class="ps-3 mb-0 text-muted">
+            <li class="mb-1">Install from <a href="https://ollama.com" target="_blank" class="text-info">ollama.com</a>.</li>
+            <li class="mb-1">Pull a model in terminal: <code>ollama pull llama3.2</code></li>
+            <li class="mb-0">Start the service: <code>ollama serve</code> (runs on port 11434).</li>
+          </ol>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-auto">
+          <button class="btn btn-outline-info w-100 d-flex align-items-center justify-content-center gap-2" id="testOllamaBtn">
+            <i class="bi bi-arrow-repeat" id="testOllamaIcon"></i>
+            <span id="testOllamaText">Test Ollama & Discover Models</span>
+          </button>
+        </div>
+        <div class="small mt-2" id="ollamaTestFeedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const savePrefBtn = document.getElementById("saveProviderPrefBtn");
+  const testGeminiBtn = document.getElementById("testGeminiBtn");
+  const testOllamaBtn = document.getElementById("testOllamaBtn");
+
+  // Save Preference
+  if (savePrefBtn) {
+    savePrefBtn.addEventListener("click", () => {
+      const activePref = document.querySelector('input[name="activeProviderPref"]:checked').value;
+      const geminiModel = document.getElementById("geminiModelSelect").value;
+      const ollamaModel = document.getElementById("ollamaModelSelect").value;
+
+      savePrefBtn.disabled = true;
+
+      fetch("/api/settings/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          active_provider: activePref,
+          gemini_model: geminiModel,
+          ollama_model: ollamaModel
+        })
+      })
+        .then(r => r.json())
+        .then(res => {
+          savePrefBtn.disabled = false;
+          showToast("Preferences saved successfully!", "success");
+        })
+        .catch(err => {
+          savePrefBtn.disabled = false;
+          showToast("Failed to save preferences.", "danger");
+        });
+    });
+  }
+
+  // Test Gemini
+  if (testGeminiBtn) {
+    testGeminiBtn.addEventListener("click", () => {
+      testGeminiBtn.disabled = true;
+      document.getElementById("testGeminiIcon").className = "spinner-border spinner-border-sm";
+      document.getElementById("testGeminiText").innerText = "Probing Gemini API...";
+      const feedback = document.getElementById("geminiTestFeedback");
+      feedback.innerText = "";
+
+      fetch("/api/providers/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "gemini" })
+      })
+        .then(r => r.json())
+        .then(res => {
+          testGeminiBtn.disabled = false;
+          document.getElementById("testGeminiIcon").className = "bi bi-wifi";
+          document.getElementById("testGeminiText").innerText = "Test Gemini Connectivity";
+
+          if (res.success) {
+            feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i> ${res.message} (Probe Latency: ${res.latency_ms} ms)</span>`;
+            showToast("Gemini probe succeeded!", "success");
+          } else {
+            feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i> ${res.message}</span>`;
+            showToast("Gemini probe failed.", "warning");
+          }
+        })
+        .catch(err => {
+          testGeminiBtn.disabled = false;
+          document.getElementById("testGeminiIcon").className = "bi bi-wifi";
+          document.getElementById("testGeminiText").innerText = "Test Gemini Connectivity";
+          feedback.innerHTML = `<span class="text-danger">Network Error: ${err.message}</span>`;
+        });
+    });
+  }
+
+  // Test Ollama
+  if (testOllamaBtn) {
+    testOllamaBtn.addEventListener("click", () => {
+      testOllamaBtn.disabled = true;
+      document.getElementById("testOllamaIcon").className = "spinner-border spinner-border-sm";
+      document.getElementById("testOllamaText").innerText = "Connecting to Ollama...";
+      const feedback = document.getElementById("ollamaTestFeedback");
+      feedback.innerText = "";
+
+      fetch("/api/providers/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "ollama" })
+      })
+        .then(r => r.json())
+        .then(res => {
+          testOllamaBtn.disabled = false;
+          document.getElementById("testOllamaIcon").className = "bi bi-arrow-repeat";
+          document.getElementById("testOllamaText").innerText = "Test Ollama & Discover Models";
+
+          if (res.success) {
+            feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i> ${res.message}</span>`;
+            showToast("Ollama connection verified!", "success");
+            // Populate models dropdown dynamically
+            if (res.available_models && res.available_models.length > 0) {
+              const sel = document.getElementById("ollamaModelSelect");
+              sel.innerHTML = "";
+              res.available_models.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m;
+                opt.innerText = m;
+                sel.appendChild(opt);
+              });
+            }
+          } else {
+            feedback.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> ${res.message}</span>`;
+            showToast("Ollama is not reachable.", "warning");
+          }
+        })
+        .catch(err => {
+          testOllamaBtn.disabled = false;
+          document.getElementById("testOllamaIcon").className = "bi bi-arrow-repeat";
+          document.getElementById("testOllamaText").innerText = "Test Ollama & Discover Models";
+          feedback.innerHTML = `<span class="text-danger">Network Error: ${err.message}</span>`;
+        });
+    });
+  }
+});
+</script>
+{% endblock %}

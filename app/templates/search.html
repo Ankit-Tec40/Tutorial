@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results for "{{ query }}" - AI Engineering Lab{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Search</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 900px;">
+  <h1 class="h4 fw-bold mb-3">Search Results for: <span class="text-primary">"{{ query }}"</span></h1>
+
+  {% if lesson_results %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 text-primary d-flex align-items-center gap-2">
+      <i class="bi bi-book-half"></i>
+      <span>Curriculum Lessons ({{ lesson_results|length }})</span>
+    </h5>
+    <div class="list-group list-group-flush">
+      {% for l in lesson_results %}
+      <a href="{{ url_for('lessons.lesson_detail', slug=l.slug) }}" class="list-group-item list-group-item-action bg-transparent px-0 py-3 border-secondary-subtle">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="fw-bold text-main">{{ l.title }}</div>
+          <span class="badge bg-primary-subtle text-primary">{{ l.module.title }}</span>
+        </div>
+        <p class="small text-muted mb-0">{{ l.summary }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if project_results %}
+  <div class="card-custom p-4 mb-4">
+    <h5 class="fw-bold mb-3 text-info d-flex align-items-center gap-2">
+      <i class="bi bi-trophy"></i>
+      <span>Capstone Projects ({{ project_results|length }})</span>
+    </h5>
+    <div class="list-group list-group-flush">
+      {% for p in project_results %}
+      <a href="{{ url_for('projects.project_detail', slug=p.slug) }}" class="list-group-item list-group-item-action bg-transparent px-0 py-3 border-secondary-subtle">
+        <div class="fw-bold text-main">{{ p.title }}</div>
+        <p class="small text-muted mb-0">{{ p.description }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not lesson_results and not project_results %}
+  <div class="card-custom p-5 text-center text-muted">
+    <i class="bi bi-search fs-1 d-block mb-3"></i>
+    <h5>No results matching "{{ query }}"</h5>
+    <p class="small">Try searching for concepts like 'RAG', 'agents', 'embeddings', 'MCP', or 'prompts'.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
